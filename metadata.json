@@ -1,0 +1,5 @@
+{
+  "name": "FNF Optimization Web",
+  "description": "A high-performance web tool to optimize Friday Night Funkin' sprites for Android and Psych Engine ports. Reduces RAM usage and file size.",
+  "requestFramePermissions": []
+}
