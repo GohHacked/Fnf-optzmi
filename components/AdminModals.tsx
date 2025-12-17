@@ -197,7 +197,15 @@ export const AdminPanelModal: React.FC<AdminPanelProps> = ({
                          value={appId}
                          onChange={e => setAppId(e.target.value)}
                        />
-                       <div className="flex gap-2">
+                       <a 
+                          href="https://console.firebase.google.com/project/_/settings/general" 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-blue-400 underline block mt-2 hover:text-blue-300 text-right"
+                       >
+                          {t.dbFindKeys}
+                       </a>
+                       <div className="flex gap-2 mt-2">
                            <button 
                              onClick={handleConnect}
                              className="flex-1 bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-2 rounded"
@@ -211,9 +219,6 @@ export const AdminPanelModal: React.FC<AdminPanelProps> = ({
                              ✕
                            </button>
                        </div>
-                       <p className="text-[10px] text-gray-500">
-                         Create a Firestore DB at console.firebase.google.com and paste keys here.
-                       </p>
                     </div>
                   )}
                 </>

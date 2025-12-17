@@ -76,6 +76,7 @@ export const translations: Record<Language, Translation> = {
     dbDisconnectBtn: "DISCONNECT",
     dbProjectPlaceholder: "Project ID",
     dbApiKeyPlaceholder: "API Key",
+    dbFindKeys: "Where to find these keys? (Firebase Console)",
   },
   ru: {
     title: "FNF ОПТИМИЗАТОР",
@@ -152,5 +153,6 @@ export const translations: Record<Language, Translation> = {
     dbDisconnectBtn: "ОТКЛЮЧИТЬ",
     dbProjectPlaceholder: "ID Проекта (Project ID)",
     dbApiKeyPlaceholder: "Ключ API (API Key)",
+    dbFindKeys: "Где найти эти ключи? (Firebase Console)",
   }
 };

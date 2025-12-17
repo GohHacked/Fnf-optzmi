@@ -9,23 +9,44 @@ const STORAGE_KEYS = {
   FIREBASE_CONFIG: 'fnf_firebase_config'
 };
 
+// HARDCODED CONFIG (From Screenshot)
+const DEFAULT_CONFIG: FirebaseConfig = {
+  apiKey: "AIzaSyDhy_TlFjXQv70Kw8kC-r9bjDq7GyapTeI",
+  authDomain: "fnfopt-26cec.firebaseapp.com",
+  projectId: "fnfopt-26cec",
+  storageBucket: "fnfopt-26cec.firebasestorage.app",
+  messagingSenderId: "2375023806",
+  appId: "1:2375023806:web:d5aece2caeba25cd7af2ef"
+};
+
 // Internal state
 let dbInstance: Firestore | null = null;
 let unsubscribe: (() => void) | null = null;
 let cachedMaintenance = false;
 
-// Helper to initialize Firebase if config exists
+// Helper to initialize Firebase
 const initFirebase = () => {
   try {
+    // 1. Try Custom Config from LocalStorage
+    let config = DEFAULT_CONFIG;
     const stored = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
+    
     if (stored) {
-      const config = JSON.parse(stored);
-      // Avoid duplicate initialization
-      const app = !getApps().length ? initializeApp(config) : getApp();
+      config = JSON.parse(stored);
+    }
+
+    // Initialize
+    if (!getApps().length) {
+      const app = initializeApp(config);
       dbInstance = getFirestore(app);
       console.log("Firebase initialized successfully");
-      return true;
+    } else {
+      // App already exists (HMR or prev init)
+      const app = getApp();
+      dbInstance = getFirestore(app);
     }
+    return true;
+
   } catch (e) {
     console.error("Failed to init firebase:", e);
     dbInstance = null;
@@ -57,13 +78,15 @@ export const db = {
 
   connect: (config: FirebaseConfig) => {
     localStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(config));
-    const success = initFirebase();
-    if(success) window.location.reload(); // Reload to start fresh connection
+    // We don't need to reload strictly if we handle re-init, but reload is safer for full clean state
+    window.location.reload(); 
   },
 
   disconnect: () => {
+    // If we want to truly disconnect when a default config exists, we'd need a flag.
+    // For now, removing custom config reverts to Default (Connected). 
+    // To allow "Offline Mode", we can mess with the config, but let's assume disconnect = reset to default.
     localStorage.removeItem(STORAGE_KEYS.FIREBASE_CONFIG);
-    if(unsubscribe) unsubscribe();
     window.location.reload();
   },
 
@@ -78,14 +101,15 @@ export const db = {
         });
       } catch (e) {
         console.error("Firebase write error:", e);
-        alert("Database write failed. Check your permissions.");
+        // Fallback or Alert
+        // If write fails (e.g. rules), we might want to update local state too so the admin sees the change immediately
+        // but real sync failed.
+        alert("Sync Error: Check internet or permissions.");
       }
     } else {
       // LOCAL MODE
       localStorage.setItem(STORAGE_KEYS.MAINTENANCE, isActive.toString());
-      // Trigger event for local tab sync
       window.dispatchEvent(new Event('storage'));
-      // Manually trigger subscription callback if needed via App.tsx logic
     }
   },
 
@@ -105,7 +129,8 @@ export const db = {
           callback(val);
         } else {
           // If doc doesn't exist yet, create it default false
-          setDoc(docRef, { maintenance: false });
+          // Use setDoc cautiously in listener, but okay for init
+          // setDoc(docRef, { maintenance: false }); 
           callback(false);
         }
       }, (error) => {
@@ -125,7 +150,6 @@ export const db = {
       handler();
 
       window.addEventListener('storage', handler);
-      // We return a cleanup function that removes the listener
       return () => window.removeEventListener('storage', handler);
     }
   },

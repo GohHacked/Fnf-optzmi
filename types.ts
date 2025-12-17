@@ -107,4 +107,5 @@ export interface Translation {
   dbDisconnectBtn: string;
   dbProjectPlaceholder: string;
   dbApiKeyPlaceholder: string;
+  dbFindKeys: string;
 }
