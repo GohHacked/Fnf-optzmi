@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Translation } from '../types';
 
 // --- LOGIN MODAL ---
@@ -31,7 +31,7 @@ export const AdminLoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, on
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fade-in">
       <div className="bg-gray-900 border-2 border-cyan-500 rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white">✕</button>
         
@@ -95,14 +95,22 @@ export const AdminPanelModal: React.FC<AdminPanelProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[65] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
       <div className="bg-gray-900 border-4 border-purple-500 rounded-2xl w-full max-w-md p-6 shadow-[0_0_40px_rgba(168,85,247,0.3)] relative">
          <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white">✕</button>
 
-         <div className="text-center mb-8">
+         <div className="text-center mb-6">
             <div className="text-5xl mb-2">💻</div>
             <h2 className="font-funkin text-3xl text-purple-400 tracking-widest">{t.adminPanelTitle}</h2>
             <p className="text-xs text-gray-500 font-mono">user: goh@gmail.com</p>
+         </div>
+
+         {/* Warning about Local Storage */}
+         <div className="bg-yellow-900/30 border border-yellow-600/50 p-3 rounded-lg mb-4 text-left">
+           <p className="text-yellow-200 text-xs font-mono flex gap-2">
+             <span>⚠️</span>
+             <b>LOCAL DATABASE:</b> Settings are saved to this browser only. Enabling Maintenance Mode here will NOT affect other devices unless you connect a backend.
+           </p>
          </div>
 
          <div className="bg-black/40 rounded-xl p-6 border border-white/10 mb-6">

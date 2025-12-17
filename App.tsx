@@ -7,9 +7,10 @@ import MaintenanceScreen from './components/MaintenanceScreen';
 import { OptimizationConfig, OptimizedResult, Language } from './types';
 import { optimizeAsset, formatBytes } from './utils/optimization';
 import { translations } from './utils/translations';
+import { db } from './utils/storage'; // Import DB service
 
 // --- CONFIGURATION ---
-const APP_VERSION = "1.3.1";
+const APP_VERSION = "1.3.2";
 
 // --- Visual Components ---
 
@@ -93,16 +94,38 @@ const App: React.FC = () => {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
 
-  // Admin / Maintenance System (with LocalStorage persistence)
-  const [isAdmin, setIsAdmin] = useState(() => {
-    const stored = localStorage.getItem('fnf_admin_auth');
-    return stored === 'true';
-  });
-  
-  const [maintenanceMode, setMaintenanceMode] = useState(() => {
-    const stored = localStorage.getItem('fnf_maintenance');
-    return stored === 'true';
-  });
+  // Admin / Maintenance System (Using db.ts)
+  const [isAdmin, setIsAdmin] = useState(db.isAdmin());
+  const [maintenanceMode, setMaintenanceMode] = useState(db.getMaintenanceStatus());
+
+  // Listen for storage changes (to sync across tabs)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setIsAdmin(db.isAdmin());
+      setMaintenanceMode(db.getMaintenanceStatus());
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Update DB when state changes in this component
+  const handleMaintenanceToggle = (val: boolean) => {
+    db.setMaintenanceStatus(val);
+    setMaintenanceMode(val);
+  };
+
+  const handleLogout = () => {
+    db.logout();
+    setIsAdmin(false);
+    setIsAdminPanelOpen(false);
+  };
+
+  const handleLoginSuccess = () => {
+    db.login();
+    setIsAdmin(true);
+    setIsAdminPanelOpen(true);
+  };
+
 
   const [config, setConfig] = useState<OptimizationConfig>({
     scale: 0.8,
@@ -111,16 +134,6 @@ const App: React.FC = () => {
     mode: 'background',
     removeBlack: false
   });
-
-  // Update localStorage when admin/maintenance state changes
-  useEffect(() => {
-    localStorage.setItem('fnf_admin_auth', isAdmin.toString());
-  }, [isAdmin]);
-
-  useEffect(() => {
-    localStorage.setItem('fnf_maintenance', maintenanceMode.toString());
-  }, [maintenanceMode]);
-
 
   const t = translations[lang];
 
@@ -170,7 +183,7 @@ const App: React.FC = () => {
         <AdminLoginModal 
           isOpen={isLoginOpen} 
           onClose={() => setIsLoginOpen(false)}
-          onLoginSuccess={() => setIsAdmin(true)}
+          onLoginSuccess={handleLoginSuccess}
           t={t}
         />
       </>
@@ -184,8 +197,9 @@ const App: React.FC = () => {
       
       {/* Maintenance Banner for Admin */}
       {isAdmin && maintenanceMode && (
-        <div className="fixed top-0 left-0 right-0 bg-stripes-red text-white text-center font-bold text-xs py-1 z-[100] shadow-lg animate-pulse">
-           🚧 MAINTENANCE MODE ACTIVE (USERS SEE LOCK SCREEN) 🚧
+        <div className="fixed top-0 left-0 right-0 bg-red-900 border-b border-red-500 text-white text-center font-bold text-xs py-2 z-[100] shadow-lg animate-pulse flex justify-center items-center gap-2">
+           <span>🚧</span>
+           <span>MAINTENANCE MODE ACTIVE (LOCAL SIMULATION)</span>
         </div>
       )}
 
@@ -198,10 +212,7 @@ const App: React.FC = () => {
       <AdminLoginModal 
         isOpen={isLoginOpen} 
         onClose={() => setIsLoginOpen(false)}
-        onLoginSuccess={() => {
-           setIsAdmin(true);
-           setIsAdminPanelOpen(true);
-        }}
+        onLoginSuccess={handleLoginSuccess}
         t={t}
       />
 
@@ -209,16 +220,13 @@ const App: React.FC = () => {
         isOpen={isAdminPanelOpen}
         onClose={() => setIsAdminPanelOpen(false)}
         maintenanceMode={maintenanceMode}
-        setMaintenanceMode={setMaintenanceMode}
-        onLogout={() => {
-          setIsAdmin(false);
-          setIsAdminPanelOpen(false);
-        }}
+        setMaintenanceMode={handleMaintenanceToggle}
+        onLogout={handleLogout}
         t={t}
       />
       
       {/* Navbar Buttons */}
-      <div className="fixed top-6 right-4 z-50 flex gap-2">
+      <div className="fixed top-8 right-4 z-50 flex gap-2">
         <div className="relative">
           <button 
             onClick={(e) => {
