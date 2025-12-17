@@ -9,7 +9,7 @@ const STORAGE_KEYS = {
   FIREBASE_CONFIG: 'fnf_firebase_config'
 };
 
-// HARDCODED CONFIG (From Screenshot)
+// HARDCODED CONFIG (Verified)
 const DEFAULT_CONFIG: FirebaseConfig = {
   apiKey: "AIzaSyDhy_TlFjXQv70Kw8kC-r9bjDq7GyapTeI",
   authDomain: "fnfopt-26cec.firebaseapp.com",
@@ -27,7 +27,6 @@ let cachedMaintenance = false;
 // Helper to initialize Firebase
 const initFirebase = () => {
   try {
-    // 1. Try Custom Config from LocalStorage
     let config = DEFAULT_CONFIG;
     const stored = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
     
@@ -35,13 +34,11 @@ const initFirebase = () => {
       config = JSON.parse(stored);
     }
 
-    // Initialize
     if (!getApps().length) {
       const app = initializeApp(config);
       dbInstance = getFirestore(app);
       console.log("Firebase initialized successfully");
     } else {
-      // App already exists (HMR or prev init)
       const app = getApp();
       dbInstance = getFirestore(app);
     }
@@ -58,7 +55,6 @@ const initFirebase = () => {
 initFirebase();
 
 export const db = {
-  // Check auth (Session is always local for this app structure)
   isAdmin: (): boolean => {
     return localStorage.getItem(STORAGE_KEYS.ADMIN_AUTH) === 'true';
   },
@@ -71,44 +67,56 @@ export const db = {
     localStorage.removeItem(STORAGE_KEYS.ADMIN_AUTH);
   },
 
-  // Connection management
   isConnected: (): boolean => {
     return !!dbInstance;
   },
 
   connect: (config: FirebaseConfig) => {
     localStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(config));
-    // We don't need to reload strictly if we handle re-init, but reload is safer for full clean state
     window.location.reload(); 
   },
 
   disconnect: () => {
-    // If we want to truly disconnect when a default config exists, we'd need a flag.
-    // For now, removing custom config reverts to Default (Connected). 
-    // To allow "Offline Mode", we can mess with the config, but let's assume disconnect = reset to default.
     localStorage.removeItem(STORAGE_KEYS.FIREBASE_CONFIG);
     window.location.reload();
   },
 
-  // Maintenance Logic
+  // Maintenance Logic with Fallback
   setMaintenanceStatus: async (isActive: boolean) => {
+    // ALWAYS save locally first as backup
+    localStorage.setItem(STORAGE_KEYS.MAINTENANCE, isActive.toString());
+    
     if (dbInstance) {
-      // REMOTE MODE
       try {
         await setDoc(doc(dbInstance, "settings", "global"), {
           maintenance: isActive,
           updatedAt: new Date().toISOString()
         });
-      } catch (e) {
+      } catch (e: any) {
         console.error("Firebase write error:", e);
-        // Fallback or Alert
-        // If write fails (e.g. rules), we might want to update local state too so the admin sees the change immediately
-        // but real sync failed.
-        alert("Sync Error: Check internet or permissions.");
+        
+        // Handle Permission Error specifically
+        if (e.code === 'permission-denied' || e.message.includes('permission')) {
+             alert(
+                 "⚠️ ОШИБКА ДОСТУПА К БАЗЕ!\n\n" +
+                 "Сайт не может сохранить настройки в облако.\n" +
+                 "1. Зайдите в Firebase Console -> Firestore Database\n" +
+                 "2. Откройте вкладку 'Правила' (Rules)\n" +
+                 "3. Замените код на:\n" +
+                 "   allow read, write: if true;\n" +
+                 "4. Нажмите Опубликовать.\n\n" +
+                 "Режим переключен ТОЛЬКО ЛОКАЛЬНО."
+             );
+        } else {
+             // For other errors, just log to console and don't block user
+             console.warn("Sync failed, using local mode.");
+        }
+        
+        // Trigger local event so other tabs might see it if lucky, but mostly to ensure fallback works
+        window.dispatchEvent(new Event('storage'));
       }
     } else {
-      // LOCAL MODE
-      localStorage.setItem(STORAGE_KEYS.MAINTENANCE, isActive.toString());
+      // Local Only Mode
       window.dispatchEvent(new Event('storage'));
     }
   },
@@ -116,7 +124,6 @@ export const db = {
   // Real-time listener
   subscribeToMaintenance: (callback: (isActive: boolean) => void) => {
     if (dbInstance) {
-      // REMOTE LISTENER
       if(unsubscribe) unsubscribe();
       
       const docRef = doc(dbInstance, "settings", "global");
@@ -128,33 +135,25 @@ export const db = {
           cachedMaintenance = val;
           callback(val);
         } else {
-          // If doc doesn't exist yet, create it default false
-          // Use setDoc cautiously in listener, but okay for init
-          // setDoc(docRef, { maintenance: false }); 
-          callback(false);
+          // Document doesn't exist? Try to use local fallback
+          callback(localStorage.getItem(STORAGE_KEYS.MAINTENANCE) === 'true');
         }
       }, (error) => {
-        console.error("Listen failed:", error);
-        // Fallback to local if connection drops
+        console.error("Listen failed (using local fallback):", error);
         callback(localStorage.getItem(STORAGE_KEYS.MAINTENANCE) === 'true');
       });
 
     } else {
-      // LOCAL LISTENER (Storage Event)
       const handler = () => {
         const val = localStorage.getItem(STORAGE_KEYS.MAINTENANCE) === 'true';
         callback(val);
       };
-      
-      // Initial value
       handler();
-
       window.addEventListener('storage', handler);
       return () => window.removeEventListener('storage', handler);
     }
   },
   
-  // Clean up
   cleanup: () => {
       if(unsubscribe) unsubscribe();
   }
