@@ -23,6 +23,15 @@ export interface OptimizedResult {
   isZip?: boolean;
 }
 
+export interface FirebaseConfig {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
+}
+
 export interface Translation {
   title: string;
   dropZone: string; // Kept for compatibility if needed, but mostly unused now
@@ -89,4 +98,13 @@ export interface Translation {
   maintenanceScreenTitle: string;
   maintenanceScreenDesc: string;
   adminAccess: string;
+  // DB
+  dbTitle: string;
+  dbStatusLocal: string;
+  dbStatusConnected: string;
+  dbDesc: string;
+  dbConnectBtn: string;
+  dbDisconnectBtn: string;
+  dbProjectPlaceholder: string;
+  dbApiKeyPlaceholder: string;
 }

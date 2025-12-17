@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Translation } from '../types';
+import { Translation, FirebaseConfig } from '../types';
+import { db } from '../utils/storage';
 
 // --- LOGIN MODAL ---
 
@@ -92,11 +93,32 @@ export const AdminPanelModal: React.FC<AdminPanelProps> = ({
   onLogout,
   t 
 }) => {
+  const [showDbSettings, setShowDbSettings] = useState(false);
+  const isConnected = db.isConnected();
+
+  // DB Form State
+  const [apiKey, setApiKey] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [appId, setAppId] = useState('');
+
+  const handleConnect = () => {
+    if(!apiKey || !projectId) return;
+    const config: FirebaseConfig = {
+        apiKey,
+        projectId,
+        appId,
+        authDomain: `${projectId}.firebaseapp.com`,
+        storageBucket: `${projectId}.appspot.com`,
+        messagingSenderId: "00000000000" // Placeholder, usually not strictly needed for Firestore
+    };
+    db.connect(config);
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="bg-gray-900 border-4 border-purple-500 rounded-2xl w-full max-w-md p-6 shadow-[0_0_40px_rgba(168,85,247,0.3)] relative">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div className="bg-gray-900 border-4 border-purple-500 rounded-2xl w-full max-w-md p-6 shadow-[0_0_40px_rgba(168,85,247,0.3)] relative my-auto">
          <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white">✕</button>
 
          <div className="text-center mb-6">
@@ -105,15 +127,8 @@ export const AdminPanelModal: React.FC<AdminPanelProps> = ({
             <p className="text-xs text-gray-500 font-mono">user: goh@gmail.com</p>
          </div>
 
-         {/* Warning about Local Storage */}
-         <div className="bg-yellow-900/30 border border-yellow-600/50 p-3 rounded-lg mb-4 text-left">
-           <p className="text-yellow-200 text-xs font-mono flex gap-2">
-             <span>⚠️</span>
-             <b>LOCAL DATABASE:</b> Settings are saved to this browser only. Enabling Maintenance Mode here will NOT affect other devices unless you connect a backend.
-           </p>
-         </div>
-
-         <div className="bg-black/40 rounded-xl p-6 border border-white/10 mb-6">
+         {/* Maintenance Section */}
+         <div className="bg-black/40 rounded-xl p-6 border border-white/10 mb-4">
             <h3 className="text-white font-bold mb-4 flex items-center gap-2">
               🔧 {t.maintenanceMode}
             </h3>
@@ -134,6 +149,75 @@ export const AdminPanelModal: React.FC<AdminPanelProps> = ({
             <p className="text-xs text-gray-400 leading-relaxed">
               {t.maintenanceDesc}
             </p>
+         </div>
+
+         {/* DB Section */}
+         <div className={`rounded-xl p-6 border transition-colors mb-6 ${isConnected ? 'bg-green-900/20 border-green-500/30' : 'bg-gray-800/40 border-white/10'}`}>
+             <h3 className="font-bold text-sm mb-2 flex items-center justify-between">
+                <span>🗄️ {t.dbTitle}</span>
+                <span className={`text-[10px] px-2 py-1 rounded ${isConnected ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'}`}>
+                    {isConnected ? 'ONLINE' : 'LOCAL'}
+                </span>
+             </h3>
+             <p className="text-xs text-gray-400 mb-4">{t.dbDesc}</p>
+
+             {isConnected ? (
+                <button 
+                  onClick={() => db.disconnect()}
+                  className="w-full bg-red-900/40 hover:bg-red-900/60 border border-red-500 text-red-200 text-xs font-bold py-2 rounded transition-all"
+                >
+                  {t.dbDisconnectBtn}
+                </button>
+             ) : (
+                <>
+                  {!showDbSettings ? (
+                    <button 
+                      onClick={() => setShowDbSettings(true)}
+                      className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 rounded transition-all"
+                    >
+                      {t.dbConnectBtn}
+                    </button>
+                  ) : (
+                    <div className="space-y-3 animate-fade-in">
+                       <input 
+                         className="w-full bg-black/50 border border-gray-600 rounded p-2 text-xs text-white"
+                         placeholder={t.dbProjectPlaceholder}
+                         value={projectId}
+                         onChange={e => setProjectId(e.target.value)}
+                       />
+                       <input 
+                         className="w-full bg-black/50 border border-gray-600 rounded p-2 text-xs text-white"
+                         placeholder={t.dbApiKeyPlaceholder}
+                         value={apiKey}
+                         onChange={e => setApiKey(e.target.value)}
+                       />
+                       <input 
+                         className="w-full bg-black/50 border border-gray-600 rounded p-2 text-xs text-white"
+                         placeholder="App ID (Optional)"
+                         value={appId}
+                         onChange={e => setAppId(e.target.value)}
+                       />
+                       <div className="flex gap-2">
+                           <button 
+                             onClick={handleConnect}
+                             className="flex-1 bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-2 rounded"
+                           >
+                             SAVE & CONNECT
+                           </button>
+                           <button 
+                             onClick={() => setShowDbSettings(false)}
+                             className="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 rounded"
+                           >
+                             ✕
+                           </button>
+                       </div>
+                       <p className="text-[10px] text-gray-500">
+                         Create a Firestore DB at console.firebase.google.com and paste keys here.
+                       </p>
+                    </div>
+                  )}
+                </>
+             )}
          </div>
 
          <button 

@@ -7,10 +7,10 @@ import MaintenanceScreen from './components/MaintenanceScreen';
 import { OptimizationConfig, OptimizedResult, Language } from './types';
 import { optimizeAsset, formatBytes } from './utils/optimization';
 import { translations } from './utils/translations';
-import { db } from './utils/storage'; // Import DB service
+import { db } from './utils/storage'; 
 
 // --- CONFIGURATION ---
-const APP_VERSION = "1.3.2";
+const APP_VERSION = "1.3.3";
 
 // --- Visual Components ---
 
@@ -94,24 +94,28 @@ const App: React.FC = () => {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
 
-  // Admin / Maintenance System (Using db.ts)
+  // Admin / Maintenance System
   const [isAdmin, setIsAdmin] = useState(db.isAdmin());
-  const [maintenanceMode, setMaintenanceMode] = useState(db.getMaintenanceStatus());
+  // Start with false, will be updated by subscription immediately
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [isConnected, setIsConnected] = useState(db.isConnected());
 
-  // Listen for storage changes (to sync across tabs)
+  // Subscribe to DB changes
   useEffect(() => {
-    const handleStorageChange = () => {
-      setIsAdmin(db.isAdmin());
-      setMaintenanceMode(db.getMaintenanceStatus());
+    // This handles both LocalStorage events and Firestore snapshots
+    const unsubscribe = db.subscribeToMaintenance((status) => {
+       setMaintenanceMode(status);
+    });
+    return () => {
+      unsubscribe && unsubscribe(); // Call if it's a function
+      db.cleanup();
     };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Update DB when state changes in this component
   const handleMaintenanceToggle = (val: boolean) => {
     db.setMaintenanceStatus(val);
-    setMaintenanceMode(val);
+    // Optimistic update for UI responsiveness
+    setMaintenanceMode(val); 
   };
 
   const handleLogout = () => {
@@ -199,7 +203,7 @@ const App: React.FC = () => {
       {isAdmin && maintenanceMode && (
         <div className="fixed top-0 left-0 right-0 bg-red-900 border-b border-red-500 text-white text-center font-bold text-xs py-2 z-[100] shadow-lg animate-pulse flex justify-center items-center gap-2">
            <span>🚧</span>
-           <span>MAINTENANCE MODE ACTIVE (LOCAL SIMULATION)</span>
+           <span>MAINTENANCE MODE ACTIVE ({isConnected ? 'ONLINE' : 'LOCAL'})</span>
         </div>
       )}
 

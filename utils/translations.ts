@@ -67,6 +67,15 @@ export const translations: Record<Language, Translation> = {
     maintenanceScreenTitle: "TECHNICAL WORKS",
     maintenanceScreenDesc: "The optimization tool is currently under maintenance. Please come back later.",
     adminAccess: "Admin Login",
+    // DB
+    dbTitle: "DATABASE CONNECTION",
+    dbStatusLocal: "STATUS: LOCAL (OFFLINE)",
+    dbStatusConnected: "STATUS: FIREBASE (ONLINE)",
+    dbDesc: "Connect a Firebase Firestore database to sync maintenance mode across devices.",
+    dbConnectBtn: "CONNECT DATABASE",
+    dbDisconnectBtn: "DISCONNECT",
+    dbProjectPlaceholder: "Project ID",
+    dbApiKeyPlaceholder: "API Key",
   },
   ru: {
     title: "FNF ОПТИМИЗАТОР",
@@ -134,5 +143,14 @@ export const translations: Record<Language, Translation> = {
     maintenanceScreenTitle: "ТЕХНИЧЕСКИЕ РАБОТЫ",
     maintenanceScreenDesc: "На сайте ведутся работы по оптимизации сервера. Пожалуйста, зайдите позже.",
     adminAccess: "Вход Админа",
+    // DB
+    dbTitle: "БАЗА ДАННЫХ",
+    dbStatusLocal: "СТАТУС: ЛОКАЛЬНО (ОФФЛАЙН)",
+    dbStatusConnected: "СТАТУС: FIREBASE (ОНЛАЙН)",
+    dbDesc: "Подключите базу данных Firebase, чтобы синхронизировать режим тех. работ на всех устройствах.",
+    dbConnectBtn: "ПОДКЛЮЧИТЬ БАЗУ",
+    dbDisconnectBtn: "ОТКЛЮЧИТЬ",
+    dbProjectPlaceholder: "ID Проекта (Project ID)",
+    dbApiKeyPlaceholder: "Ключ API (API Key)",
   }
 };
