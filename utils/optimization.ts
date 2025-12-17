@@ -14,7 +14,14 @@ const scaleXML = (xmlContent: string, scale: number): string => {
     attrsToScale.forEach(attr => {
       if (el.hasAttribute(attr)) {
         const val = parseFloat(el.getAttribute(attr) || "0");
-        el.setAttribute(attr, Math.round(val * scale).toString());
+        let newVal = Math.round(val * scale);
+        
+        // Safety check: Don't let width/height be 0 if original wasn't 0
+        if ((attr === 'width' || attr === 'height' || attr === 'frameWidth' || attr === 'frameHeight') && val > 0 && newVal === 0) {
+            newVal = 1;
+        }
+
+        el.setAttribute(attr, newVal.toString());
       }
     });
   }
@@ -32,6 +39,25 @@ const fixShaderCode = (code: string): string => {
   return fixed;
 };
 
+const removeBlackBackground = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+  const threshold = 15; // Tolerance for "black"
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    
+    // If pixel is very dark (black), make it transparent
+    if (r < threshold && g < threshold && b < threshold) {
+      data[i + 3] = 0; // Alpha
+    }
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+};
+
 // Optimized Single Image Logic (Reusable)
 const processImageBlob = (blob: Blob, config: OptimizationConfig, originalName: string): Promise<{blob: Blob, width: number, height: number}> => {
   return new Promise((resolve, reject) => {
@@ -42,19 +68,26 @@ const processImageBlob = (blob: Blob, config: OptimizationConfig, originalName: 
       const ctx = canvas.getContext('2d');
       if (!ctx) { reject("No Context"); return; }
 
-      // Smart Logic: If it's an icon, don't resize usually, unless explicitly told.
-      // For ZIP mode, we apply scale to everything for RAM saving, 
-      // but if filename contains 'icon', maybe we skip scaling? 
-      // For now, respect config.scale.
-      
-      const width = Math.round(img.width * config.scale);
-      const height = Math.round(img.height * config.scale);
+      // Ensure at least 1px dimensions
+      let width = Math.max(1, Math.round(img.width * config.scale));
+      let height = Math.max(1, Math.round(img.height * config.scale));
+
+      // Don't resize icons usually unless scale is explicitly set very low
+      if (config.mode === 'icon' && config.scale > 0.9) {
+          width = img.width;
+          height = img.height;
+      }
 
       canvas.width = width;
       canvas.height = height;
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, width, height);
+
+      // Apply Remove Black Background if enabled
+      if (config.removeBlack) {
+        removeBlackBackground(ctx, width, height);
+      }
 
       canvas.toBlob((b) => {
         if(b) resolve({blob: b, width, height});
@@ -78,13 +111,8 @@ export const optimizeAsset = async (
     const loadedZip = await zip.loadAsync(file);
     
     let totalOriginalSize = 0;
-    
-    // We need to process files sequentially or in small batches to avoid crashing browser memory
     const fileKeys = Object.keys(loadedZip.files);
     
-    // Map to store which images were scaled, so we can scale matching XMLs
-    const scaledImages = new Set<string>(); 
-
     for (const filename of fileKeys) {
       const fileEntry = loadedZip.files[filename];
       if (fileEntry.dir) {
@@ -94,7 +122,6 @@ export const optimizeAsset = async (
 
       const fileData = await fileEntry.async('blob');
       totalOriginalSize += fileData.size;
-
       const lowerName = filename.toLowerCase();
 
       // Optimize Images
@@ -102,9 +129,7 @@ export const optimizeAsset = async (
         try {
           const { blob } = await processImageBlob(fileData, config, filename);
           newZip.file(filename, blob);
-          scaledImages.add(filename.replace(/\.[^/.]+$/, "")); // Store filename without extension
         } catch (e) {
-          // If fail, keep original
           newZip.file(filename, fileData);
         }
       } 
@@ -114,16 +139,9 @@ export const optimizeAsset = async (
         const fixed = fixShaderCode(text);
         newZip.file(filename, fixed);
       }
-      // Audio (Skip optimization for now, just copy)
       else {
-        // We will process XMLs in a second pass or check now?
-        // Actually, we can just copy XML data now, and if we need to scale it, we parse it.
-        // Problem: We might encounter XML before PNG in loop.
-        // Solution: Better to read XML content, check if we SHOULD scale it (assume yes if config.scale < 1)
-        
+        // XML Scaling logic
         if (lowerName.endsWith('.xml') && config.scale < 1) {
-           // We assume if user wants to scale ZIP, they want to scale everything.
-           // Ideally we match it to a PNG, but blindly scaling XML coords is usually safe if the texture is also scaled.
            const text = await fileData.text();
            const scaled = scaleXML(text, config.scale);
            newZip.file(filename, scaled);
@@ -176,12 +194,12 @@ export const optimizeAsset = async (
       const ctx = canvas.getContext('2d');
       if (!ctx) { reject(new Error('Failed to get canvas context')); return; }
 
-      let width = img.width;
-      let height = img.height;
+      let width = Math.max(1, Math.round(img.width * config.scale));
+      let height = Math.max(1, Math.round(img.height * config.scale));
 
-      if (config.mode !== 'icon') {
-        width = Math.round(img.width * config.scale);
-        height = Math.round(img.height * config.scale);
+      if (config.mode === 'icon' && config.scale > 0.9) {
+          width = img.width;
+          height = img.height;
       }
 
       canvas.width = width;
@@ -189,6 +207,11 @@ export const optimizeAsset = async (
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, width, height);
+
+      // Apply Remove Black Background if enabled
+      if (config.removeBlack) {
+        removeBlackBackground(ctx, width, height);
+      }
 
       let xmlBlob: Blob | undefined = undefined;
       let xmlUrl: string | undefined = undefined;

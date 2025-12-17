@@ -7,6 +7,7 @@ export interface OptimizationConfig {
   quality: number;
   format: 'image/png' | 'image/jpeg' | 'image/webp';
   mode: AssetMode;
+  removeBlack: boolean;
 }
 
 export interface OptimizedResult {
@@ -24,7 +25,7 @@ export interface OptimizedResult {
 
 export interface Translation {
   title: string;
-  dropZone: string;
+  dropZone: string; // Kept for compatibility if needed, but mostly unused now
   dropXml: string;
   dragActive: string;
   modeChar: string;
@@ -35,6 +36,7 @@ export interface Translation {
   scale: string;
   quality: string;
   format: string;
+  removeBlack: string;
   btnOptimize: string;
   btnOptimizing: string;
   success: string;
@@ -60,4 +62,31 @@ export interface Translation {
   menuFeat3: string;
   menuZipSupport: string;
   menuZipSupportDesc: string;
+  // New buttons
+  uploadSpriteBtn: string;
+  uploadSpriteDesc: string;
+  uploadZipBtn: string;
+  uploadZipDesc: string;
+  // Presets
+  presetsTitle: string;
+  presetHigh: string;
+  presetBalanced: string;
+  presetPerf: string;
+  presetPotato: string;
+  // Admin & Maintenance
+  menuUpdate: string;
+  menuAdmin: string;
+  loginTitle: string;
+  emailPlaceholder: string;
+  passPlaceholder: string;
+  btnLogin: string;
+  adminPanelTitle: string;
+  maintenanceMode: string;
+  maintenanceOn: string;
+  maintenanceOff: string;
+  maintenanceDesc: string;
+  logout: string;
+  maintenanceScreenTitle: string;
+  maintenanceScreenDesc: string;
+  adminAccess: string;
 }

@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FileUpload from './components/FileUpload';
 import OptimizationControls from './components/OptimizationControls';
 import InfoModal from './components/InfoModal';
+import { AdminLoginModal, AdminPanelModal } from './components/AdminModals';
+import MaintenanceScreen from './components/MaintenanceScreen';
 import { OptimizationConfig, OptimizedResult, Language } from './types';
 import { optimizeAsset, formatBytes } from './utils/optimization';
 import { translations } from './utils/translations';
+
+// --- CONFIGURATION ---
+const APP_VERSION = "1.3.1";
 
 // --- Visual Components ---
 
@@ -67,22 +72,57 @@ const SantaHat = () => (
 // --- Main App ---
 
 const App: React.FC = () => {
-  const [lang, setLang] = useState<Language>('en');
+  // --- STATE ---
+  const [lang, setLang] = useState<Language>(() => {
+    if (typeof navigator !== 'undefined' && navigator.language.startsWith('ru')) {
+      return 'ru';
+    }
+    return 'en';
+  });
+
+  // Data
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedXml, setSelectedXml] = useState<File | null>(null);
   const [result, setResult] = useState<OptimizedResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
   
+  // UI Modals
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+
+  // Admin / Maintenance System (with LocalStorage persistence)
+  const [isAdmin, setIsAdmin] = useState(() => {
+    return localStorage.getItem('fnf_admin_auth') === 'true';
+  });
+  
+  const [maintenanceMode, setMaintenanceMode] = useState(() => {
+    return localStorage.getItem('fnf_maintenance') === 'true';
+  });
+
   const [config, setConfig] = useState<OptimizationConfig>({
     scale: 0.8,
     quality: 0.8,
     format: 'image/png',
-    mode: 'background' // default
+    mode: 'background',
+    removeBlack: false
   });
 
+  // Update localStorage when admin/maintenance state changes
+  useEffect(() => {
+    localStorage.setItem('fnf_admin_auth', isAdmin.toString());
+  }, [isAdmin]);
+
+  useEffect(() => {
+    localStorage.setItem('fnf_maintenance', maintenanceMode.toString());
+  }, [maintenanceMode]);
+
+
   const t = translations[lang];
+
+  // --- HANDLERS ---
 
   const handleOptimize = async () => {
     if (!selectedFile) return;
@@ -96,7 +136,6 @@ const App: React.FC = () => {
     setResult(null);
 
     try {
-      // Simulate slight delay for UX
       await new Promise(resolve => setTimeout(resolve, 500));
       const res = await optimizeAsset(selectedFile, selectedXml, config);
       setResult(res);
@@ -117,24 +156,102 @@ const App: React.FC = () => {
 
   const toggleLang = () => setLang(l => l === 'en' ? 'ru' : 'en');
 
+  // --- RENDER BLOCKERS ---
+
+  if (maintenanceMode && !isAdmin) {
+    return (
+      <>
+        <MaintenanceScreen 
+          t={t} 
+          onAdminLoginClick={() => setIsLoginOpen(true)}
+        />
+        <AdminLoginModal 
+          isOpen={isLoginOpen} 
+          onClose={() => setIsLoginOpen(false)}
+          onLoginSuccess={() => setIsAdmin(true)}
+          t={t}
+        />
+      </>
+    );
+  }
+
+  // --- MAIN RENDER ---
+
   return (
-    <div className="min-h-screen bg-[#050505] flex flex-col items-center p-4 md:p-8 relative overflow-x-hidden font-rubik">
+    <div className="min-h-screen bg-[#050505] flex flex-col items-center p-4 md:p-8 relative overflow-x-hidden font-rubik" onClick={() => isMenuOpen && setIsMenuOpen(false)}>
       <div className="fixed inset-0 bg-gradient-to-b from-[#0a1025] via-[#1a0b2e] to-[#2b1020] pointer-events-none z-0" />
       <Snowfall />
 
-      {/* Info Modal */}
+      {/* Modals */}
       <InfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} t={t} />
+      
+      <AdminLoginModal 
+        isOpen={isLoginOpen} 
+        onClose={() => setIsLoginOpen(false)}
+        onLoginSuccess={() => {
+           setIsAdmin(true);
+           setIsAdminPanelOpen(true);
+        }}
+        t={t}
+      />
 
+      <AdminPanelModal
+        isOpen={isAdminPanelOpen}
+        onClose={() => setIsAdminPanelOpen(false)}
+        maintenanceMode={maintenanceMode}
+        setMaintenanceMode={setMaintenanceMode}
+        onLogout={() => {
+          setIsAdmin(false);
+          setIsAdminPanelOpen(false);
+        }}
+        t={t}
+      />
+      
       {/* Navbar Buttons */}
       <div className="fixed top-4 right-4 z-50 flex gap-2">
-         {/* Info Button */}
-        <button 
-          onClick={() => setIsInfoOpen(true)}
-          className="bg-black/50 backdrop-blur border border-white/30 text-white w-10 h-10 rounded-full font-bold hover:bg-white/20 transition-colors flex items-center justify-center text-xl pb-2"
-        >
-          ...
-        </button>
-        {/* Lang Toggle */}
+        <div className="relative">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMenuOpen(!isMenuOpen);
+            }}
+            className="bg-black/50 backdrop-blur border border-white/30 text-white w-10 h-10 rounded-full font-bold hover:bg-white/20 transition-colors flex items-center justify-center text-xl pb-2"
+          >
+            ...
+          </button>
+          
+          {/* Dropdown Menu */}
+          {isMenuOpen && (
+             <div className="absolute right-0 mt-2 w-56 bg-gray-900 border-2 border-white/20 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-50">
+               <button 
+                 onClick={() => { setIsInfoOpen(true); setIsMenuOpen(false); }}
+                 className="w-full text-left px-4 py-3 text-sm hover:bg-white/10 text-white border-b border-white/10"
+               >
+                 ℹ️ {t.menuInfoTitle}
+               </button>
+               <button 
+                 onClick={() => { /* Placeholder Update */ setIsMenuOpen(false); }}
+                 className="w-full text-left px-4 py-3 text-sm hover:bg-white/10 text-gray-400 border-b border-white/10"
+               >
+                 🔄 {t.menuUpdate} <span className="text-xs text-green-500 float-right opacity-50">Checking...</span>
+               </button>
+               <button 
+                 onClick={() => {
+                   setIsMenuOpen(false);
+                   if (isAdmin) {
+                     setIsAdminPanelOpen(true);
+                   } else {
+                     setIsLoginOpen(true);
+                   }
+                 }}
+                 className="w-full text-left px-4 py-3 text-sm hover:bg-purple-900/50 text-purple-300 font-bold"
+               >
+                 💻 {t.menuAdmin}
+               </button>
+             </div>
+          )}
+        </div>
+
         <button 
           onClick={toggleLang}
           className="bg-black/50 backdrop-blur border border-white/30 text-white px-3 py-1 rounded-full font-bold hover:bg-white/20 transition-colors"
@@ -157,8 +274,13 @@ const App: React.FC = () => {
             🎄 WINTER
           </span>
           <span className="bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded-full border-2 border-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.5)]">
-             v1.2 ZIP UPDATE
+             v{APP_VERSION}
           </span>
+          {isAdmin && (
+            <span className="bg-purple-700 text-white text-xs font-bold px-3 py-1 rounded-full border-2 border-purple-400 animate-pulse">
+             ADMIN
+            </span>
+          )}
         </div>
       </header>
 
@@ -176,17 +298,19 @@ const App: React.FC = () => {
 
           {!selectedFile ? (
             <div className="space-y-6">
-              <FileUpload onFileSelect={(f) => {
-                setSelectedFile(f);
-                // Auto-detect mode based on file type
-                if(f.name.endsWith('.frag') || f.name.endsWith('.vert')) {
-                  setConfig(p => ({...p, mode: 'shader'}));
-                } else if(f.name.includes('icon')) {
-                  setConfig(p => ({...p, mode: 'icon'}));
-                } else if(f.name.endsWith('.zip')) {
-                  setConfig(p => ({...p, mode: 'zip'}));
-                }
-              }} />
+              <FileUpload 
+                t={t}
+                onFileSelect={(f) => {
+                  setSelectedFile(f);
+                  if(f.name.endsWith('.frag') || f.name.endsWith('.vert')) {
+                    setConfig(p => ({...p, mode: 'shader'}));
+                  } else if(f.name.includes('icon')) {
+                    setConfig(p => ({...p, mode: 'icon'}));
+                  } else if(f.name.endsWith('.zip') || f.name.endsWith('.rar')) {
+                    setConfig(p => ({...p, mode: 'zip'}));
+                  }
+                }} 
+              />
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                 <div className="bg-gray-900/60 p-4 rounded-xl border border-white/10 hover:border-green-400 transition-colors group">
@@ -208,7 +332,6 @@ const App: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fade-in">
-              {/* Left Column: Preview */}
               <div className="space-y-6">
                  {/* ZIP ICON */}
                  {config.mode === 'zip' ? (
@@ -236,7 +359,6 @@ const App: React.FC = () => {
                    </div>
                  )}
 
-                 {/* XML Uploader if Character Mode */}
                  {config.mode === 'character' && (
                    <div className={`
                       border-2 border-dashed rounded-xl p-4 text-center transition-colors
@@ -270,7 +392,6 @@ const App: React.FC = () => {
                  </div>
               </div>
 
-              {/* Right Column: Controls or Result */}
               <div>
                 {!result ? (
                   <OptimizationControls 
@@ -299,7 +420,6 @@ const App: React.FC = () => {
                       </div>
                     )}
                     
-                    {/* DOWNLOAD BUTTONS */}
                     {result.isZip ? (
                        <a
                         href={result.url}
@@ -346,7 +466,7 @@ const App: React.FC = () => {
 
       <footer className="relative z-10 mt-12 text-center text-gray-400 text-sm font-mono">
         <p>Psych Engine & Android Optimization Tool</p>
-        <p className="opacity-50 text-xs mt-1">v1.2 ZIP SUPPORT</p>
+        <p className="opacity-50 text-xs mt-1">v{APP_VERSION} - ZIP SUPPORT</p>
       </footer>
 
       <style>{`

@@ -1,28 +1,37 @@
 import React, { useRef, useState } from 'react';
+import { Translation } from '../types';
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
+  t: Translation;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, t }) => {
+  const spriteInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
+  
+  // States for drag hover effects
+  const [spriteHover, setSpriteHover] = useState(false);
+  const [zipHover, setZipHover] = useState(false);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, type: 'sprite' | 'zip') => {
     e.preventDefault();
-    setIsDragging(true);
+    if (type === 'sprite') setSpriteHover(true);
+    else setZipHover(true);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleDragLeave = (e: React.DragEvent, type: 'sprite' | 'zip') => {
     e.preventDefault();
-    setIsDragging(false);
+    if (type === 'sprite') setSpriteHover(false);
+    else setZipHover(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent, type: 'sprite' | 'zip') => {
     e.preventDefault();
-    setIsDragging(false);
+    setSpriteHover(false);
+    setZipHover(false);
     const file = e.dataTransfer.files[0];
-    if (file && (file.type.startsWith('image/'))) {
+    if (file) {
       onFileSelect(file);
     }
   };
@@ -35,42 +44,74 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
   };
 
   return (
-    <div
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      onClick={() => inputRef.current?.click()}
-      className={`
-        relative overflow-hidden cursor-pointer group
-        border-4 border-dashed rounded-xl p-10 text-center transition-all duration-300
-        ${isDragging 
-          ? 'border-cyan-400 bg-cyan-900/30 scale-105' 
-          : 'border-gray-700 hover:border-pink-500 hover:bg-gray-800'
-        }
-      `}
-    >
-      <input
-        type="file"
-        ref={inputRef}
-        onChange={handleChange}
-        accept="image/png, image/jpeg"
-        className="hidden"
-      />
-      
-      <div className="pointer-events-none relative z-10">
-        <div className={`text-6xl mb-4 transition-transform duration-300 ${isDragging ? 'scale-110' : 'group-hover:scale-110'}`}>
-          📂
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-8">
+      {/* 1. BUTTON: SPRITE / SINGLE FILE */}
+      <div
+        onClick={() => spriteInputRef.current?.click()}
+        onDragOver={(e) => handleDragOver(e, 'sprite')}
+        onDragLeave={(e) => handleDragLeave(e, 'sprite')}
+        onDrop={(e) => handleDrop(e, 'sprite')}
+        className={`
+          relative cursor-pointer group
+          border-4 border-dashed rounded-2xl p-8 text-center transition-all duration-300
+          flex flex-col items-center justify-center h-48
+          ${spriteHover 
+            ? 'border-cyan-400 bg-cyan-900/40 scale-105' 
+            : 'border-gray-700 bg-gray-900/50 hover:border-cyan-500 hover:bg-gray-800'
+          }
+        `}
+      >
+        <input
+          type="file"
+          ref={spriteInputRef}
+          onChange={handleChange}
+          accept="image/*,.xml,.json,.frag,.vert"
+          className="hidden"
+        />
+        <div className="text-5xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+          🖼️
         </div>
-        <h3 className="font-funkin text-3xl mb-2 text-white drop-shadow-lg">
-          DROP SPRITE HERE
+        <h3 className="font-funkin text-2xl text-white drop-shadow-md uppercase tracking-wider">
+          {t.uploadSpriteBtn}
         </h3>
-        <p className="text-gray-400 font-bold">
-          PNG or JPG files supported
+        <p className="text-cyan-400 font-bold text-xs mt-2 font-mono">
+          {t.uploadSpriteDesc}
         </p>
       </div>
 
-      {/* Decorative Glow */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      {/* 2. BUTTON: ZIP ARCHIVE */}
+      <div
+        onClick={() => zipInputRef.current?.click()}
+        onDragOver={(e) => handleDragOver(e, 'zip')}
+        onDragLeave={(e) => handleDragLeave(e, 'zip')}
+        onDrop={(e) => handleDrop(e, 'zip')}
+        className={`
+          relative cursor-pointer group
+          border-4 border-dashed rounded-2xl p-8 text-center transition-all duration-300
+          flex flex-col items-center justify-center h-48
+          ${zipHover 
+            ? 'border-yellow-400 bg-yellow-900/40 scale-105' 
+            : 'border-gray-700 bg-gray-900/50 hover:border-yellow-500 hover:bg-gray-800'
+          }
+        `}
+      >
+        <input
+          type="file"
+          ref={zipInputRef}
+          onChange={handleChange}
+          accept=".zip,.rar"
+          className="hidden"
+        />
+        <div className="text-5xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
+          📦
+        </div>
+        <h3 className="font-funkin text-2xl text-white drop-shadow-md uppercase tracking-wider">
+          {t.uploadZipBtn}
+        </h3>
+        <p className="text-yellow-400 font-bold text-xs mt-2 font-mono">
+          {t.uploadZipDesc}
+        </p>
+      </div>
     </div>
   );
 };

@@ -26,19 +26,56 @@ const OptimizationControls: React.FC<ControlsProps> = ({
     onChange({ ...config, [key]: value });
   };
 
+  const applyPreset = (scale: number, quality: number) => {
+    onChange({ ...config, scale, quality });
+  };
+
   const renderSliders = () => {
     if (config.mode === 'shader') return null;
 
     return (
       <>
-        {config.mode !== 'icon' && (
-          <div className="space-y-2">
-            <label className="block text-cyan-400 font-bold uppercase tracking-wider text-sm">
+        {config.mode !== 'icon' && config.mode !== 'zip' && (
+          <div className="space-y-4">
+             {/* PRESETS */}
+             <div>
+               <label className="block text-gray-400 font-bold text-xs uppercase mb-2">
+                 {t.presetsTitle}
+               </label>
+               <div className="grid grid-cols-2 gap-2">
+                 <button 
+                   onClick={() => applyPreset(1.0, 0.9)}
+                   className="bg-green-900/40 border border-green-600 text-green-300 text-xs font-bold py-2 rounded hover:bg-green-800/60 transition-colors"
+                 >
+                   {t.presetHigh}
+                 </button>
+                 <button 
+                   onClick={() => applyPreset(0.75, 0.8)}
+                   className="bg-blue-900/40 border border-blue-600 text-blue-300 text-xs font-bold py-2 rounded hover:bg-blue-800/60 transition-colors"
+                 >
+                   {t.presetBalanced}
+                 </button>
+                 <button 
+                   onClick={() => applyPreset(0.5, 0.7)}
+                   className="bg-yellow-900/40 border border-yellow-600 text-yellow-300 text-xs font-bold py-2 rounded hover:bg-yellow-800/60 transition-colors"
+                 >
+                   {t.presetPerf}
+                 </button>
+                 <button 
+                   onClick={() => applyPreset(0.25, 0.6)}
+                   className="bg-red-900/40 border border-red-600 text-red-300 text-xs font-bold py-2 rounded hover:bg-red-800/60 transition-colors"
+                 >
+                   {t.presetPotato}
+                 </button>
+               </div>
+             </div>
+
+            <label className="block text-cyan-400 font-bold uppercase tracking-wider text-sm mt-4">
               {t.scale}
             </label>
             <div className="flex justify-between text-xs text-gray-500 mb-1">
-              <span>0.5x</span>
-              <span>1.0x</span>
+              <span>0.1x (Potato)</span>
+              <span>1.0x (Original)</span>
             </div>
             <input
               type="range"
@@ -67,6 +104,19 @@ const OptimizationControls: React.FC<ControlsProps> = ({
             className="w-full h-4 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-pink-500 hover:accent-pink-400"
           />
           <div className="text-right text-white font-mono">{Math.round(config.quality * 100)}%</div>
+        </div>
+
+        {/* Black Background Toggle */}
+        <div className="flex items-center justify-between bg-gray-800 p-3 rounded-lg border border-gray-700">
+           <label className="text-white text-sm font-bold flex items-center gap-2">
+             <span>🖌️</span> {t.removeBlack}
+           </label>
+           <button 
+             onClick={() => updateConfig('removeBlack', !config.removeBlack)}
+             className={`w-12 h-6 rounded-full transition-colors relative ${config.removeBlack ? 'bg-green-500' : 'bg-gray-600'}`}
+           >
+             <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${config.removeBlack ? 'translate-x-6' : 'translate-x-0'}`} />
+           </button>
         </div>
 
         <div className="space-y-2">
