@@ -95,11 +95,13 @@ const App: React.FC = () => {
 
   // Admin / Maintenance System (with LocalStorage persistence)
   const [isAdmin, setIsAdmin] = useState(() => {
-    return localStorage.getItem('fnf_admin_auth') === 'true';
+    const stored = localStorage.getItem('fnf_admin_auth');
+    return stored === 'true';
   });
   
   const [maintenanceMode, setMaintenanceMode] = useState(() => {
-    return localStorage.getItem('fnf_maintenance') === 'true';
+    const stored = localStorage.getItem('fnf_maintenance');
+    return stored === 'true';
   });
 
   const [config, setConfig] = useState<OptimizationConfig>({
@@ -179,6 +181,14 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#050505] flex flex-col items-center p-4 md:p-8 relative overflow-x-hidden font-rubik" onClick={() => isMenuOpen && setIsMenuOpen(false)}>
+      
+      {/* Maintenance Banner for Admin */}
+      {isAdmin && maintenanceMode && (
+        <div className="fixed top-0 left-0 right-0 bg-stripes-red text-white text-center font-bold text-xs py-1 z-[100] shadow-lg animate-pulse">
+           🚧 MAINTENANCE MODE ACTIVE (USERS SEE LOCK SCREEN) 🚧
+        </div>
+      )}
+
       <div className="fixed inset-0 bg-gradient-to-b from-[#0a1025] via-[#1a0b2e] to-[#2b1020] pointer-events-none z-0" />
       <Snowfall />
 
@@ -208,7 +218,7 @@ const App: React.FC = () => {
       />
       
       {/* Navbar Buttons */}
-      <div className="fixed top-4 right-4 z-50 flex gap-2">
+      <div className="fixed top-6 right-4 z-50 flex gap-2">
         <div className="relative">
           <button 
             onClick={(e) => {
@@ -261,7 +271,7 @@ const App: React.FC = () => {
       </div>
       
       {/* Header */}
-      <header className="relative z-10 text-center mb-8 mt-8 animate-float">
+      <header className="relative z-10 text-center mb-8 mt-12 animate-float">
         <div className="relative inline-block">
           <SantaHat />
           <h1 className="font-funkin text-5xl md:text-7xl text-transparent bg-clip-text bg-gradient-to-b from-red-500 via-white to-red-600 drop-shadow-[0_5px_5px_rgba(0,0,0,1)] stroke-white stroke-2 pb-2">
@@ -475,6 +485,10 @@ const App: React.FC = () => {
           background-size: 20px 20px;
           background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
           background-color: #111827;
+        }
+        .bg-stripes-red {
+          background-image: linear-gradient(45deg, #991b1b 25%, #7f1d1d 25%, #7f1d1d 50%, #991b1b 50%, #991b1b 75%, #7f1d1d 75%, #7f1d1d 100%);
+          background-size: 40px 40px;
         }
       `}</style>
     </div>
